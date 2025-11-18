@@ -1,0 +1,181 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    // Verifica que el usuario esté autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verifica que el usuario sea el propietario
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Verifica que el usuario pertenezca a la organización
+    function belongsToOrg(organizationId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId == organizationId;
+    }
+    
+    // Verifica rol del usuario
+    function hasRole(role) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    // Verifica que el usuario sea admin o analyst
+    function isAdminOrAnalyst() {
+      return hasRole('admin') || hasRole('analyst');
+    }
+    
+    // Obtiene el organizationId del usuario
+    function getUserOrgId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId;
+    }
+    
+    // ============================================
+    // Users Collection
+    // ============================================
+    
+    match /users/{userId} {
+      // Usuarios solo pueden leer su propio perfil o perfiles de su organización
+      allow read: if isAuthenticated() && 
+                     (isOwner(userId) || 
+                      belongsToOrg(resource.data.organizationId) ||
+                      hasRole('admin'));
+      
+      // Usuarios solo pueden crear su propio perfil durante registro
+      allow create: if isAuthenticated() && 
+                       isOwner(userId) &&
+                       request.resource.data.organizationId == getUserOrgId();
+      
+      // Usuarios solo pueden actualizar su propio perfil
+      // Admins pueden actualizar cualquier perfil de su organización
+      allow update: if isAuthenticated() && 
+                       (isOwner(userId) || 
+                        (hasRole('admin') && belongsToOrg(resource.data.organizationId))) &&
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.organizationId == resource.data.organizationId;
+      
+      // Solo admins pueden eliminar usuarios de su organización
+      allow delete: if isAuthenticated() && 
+                       hasRole('admin') && 
+                       belongsToOrg(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Alerts Collection
+    // ============================================
+    
+    match /alerts/{alertId} {
+      // Usuarios pueden leer alertas de su organización
+      allow read: if isAuthenticated() && 
+                     (belongsToOrg(resource.data.organizationId) ||
+                      isOwner(resource.data.userId));
+      
+      // Usuarios pueden crear alertas en su organización
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.organizationId == getUserOrgId();
+      
+      // Usuarios pueden actualizar sus propias alertas
+      // Analysts y admins pueden actualizar cualquier alerta de su organización
+      allow update: if isAuthenticated() && 
+                       (isOwner(resource.data.userId) ||
+                        (isAdminOrAnalyst() && belongsToOrg(resource.data.organizationId))) &&
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.organizationId == resource.data.organizationId;
+      
+      // Analysts y admins pueden eliminar alertas de su organización
+      allow delete: if isAuthenticated() && 
+                       isAdminOrAnalyst() && 
+                       belongsToOrg(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Assets Collection
+    // ============================================
+    
+    match /assets/{assetId} {
+      // Usuarios pueden leer activos de su organización
+      allow read: if isAuthenticated() && 
+                     belongsToOrg(resource.data.organizationId);
+      
+      // Analysts y admins pueden crear activos en su organización
+      allow create: if isAuthenticated() && 
+                       isAdminOrAnalyst() &&
+                       request.resource.data.organizationId == getUserOrgId();
+      
+      // Analysts y admins pueden actualizar activos de su organización
+      allow update: if isAuthenticated() && 
+                       isAdminOrAnalyst() && 
+                       belongsToOrg(resource.data.organizationId) &&
+                       request.resource.data.id == resource.data.id &&
+                       request.resource.data.organizationId == resource.data.organizationId;
+      
+      // Solo admins pueden eliminar activos de su organización
+      allow delete: if isAuthenticated() && 
+                       hasRole('admin') && 
+                       belongsToOrg(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // CTI Items Collection
+    // ============================================
+    
+    match /cti_items/{ctiItemId} {
+      // Todos los usuarios autenticados pueden leer items CTI (son públicos dentro de la organización)
+      // Pero solo de su organización si tienen organizationId
+      allow read: if isAuthenticated() && 
+                     (resource.data.organizationId == null ||
+                      resource.data.organizationId == getUserOrgId());
+      
+      // Analysts y admins pueden crear items CTI
+      allow create: if isAuthenticated() && 
+                       isAdminOrAnalyst() &&
+                       (request.resource.data.organizationId == null ||
+                        request.resource.data.organizationId == getUserOrgId());
+      
+      // Analysts y admins pueden actualizar items CTI de su organización
+      allow update: if isAuthenticated() && 
+                       isAdminOrAnalyst() && 
+                       (resource.data.organizationId == null ||
+                        belongsToOrg(resource.data.organizationId)) &&
+                       request.resource.data.id == resource.data.id;
+      
+      // Solo admins pueden eliminar items CTI
+      allow delete: if isAuthenticated() && 
+                       hasRole('admin') && 
+                       (resource.data.organizationId == null ||
+                        belongsToOrg(resource.data.organizationId));
+    }
+    
+    // ============================================
+    // CTI Knowledge Base Collection (para RAG)
+    // ============================================
+    
+    match /cti_knowledge_base/{docId} {
+      // Todos los usuarios autenticados pueden leer conocimiento CTI
+      allow read: if isAuthenticated();
+      
+      // Solo admins pueden crear/actualizar conocimiento CTI
+      allow create, update: if isAuthenticated() && hasRole('admin');
+      
+      // Solo admins pueden eliminar conocimiento CTI
+      allow delete: if isAuthenticated() && hasRole('admin');
+    }
+    
+    // ============================================
+    // Deny all other collections
+    // ============================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
