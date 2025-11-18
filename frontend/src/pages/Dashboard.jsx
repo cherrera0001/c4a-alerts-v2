@@ -21,10 +21,15 @@ export default function Dashboard() {
         alertsService.getAlerts(filters),
         alertsService.getStats(),
       ]);
-      setAlerts(alertsData.alerts || []);
-      setStats(statsData);
+      // Las respuestas ya vienen con data extraída, pero por si acaso
+      const alerts = alertsData?.alerts || alertsData || [];
+      const stats = statsData || {};
+      setAlerts(Array.isArray(alerts) ? alerts : []);
+      setStats(stats);
     } catch (error) {
       toast.error(error.message || "Error al cargar datos");
+      setAlerts([]);
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -97,32 +102,72 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mb-4 flex gap-4">
-          <select
-            value={filters.severity}
-            onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100"
-          >
-            <option value="">Todas las severidades</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-            <option value="info">Info</option>
-          </select>
+        <div className="mb-4 flex gap-4 items-center justify-between">
+          <div className="flex gap-4">
+            <select
+              value={filters.severity}
+              onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100"
+            >
+              <option value="">Todas las severidades</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="info">Info</option>
+            </select>
 
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100"
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100"
+            >
+              <option value="">Todos los estados</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          
+          <button
+            onClick={async () => {
+              try {
+                const sampleAlerts = [
+                  {
+                    title: "Alerta de prueba - Intrusión detectada",
+                    description: "Sistema de prueba: Se detectó actividad sospechosa en el servidor web",
+                    type: "CRITICAL",
+                    source: "MANUAL",
+                    severity: "critical",
+                    status: "pending",
+                  },
+                  {
+                    title: "Alerta de prueba - Vulnerabilidad encontrada",
+                    description: "Sistema de prueba: Nueva vulnerabilidad requiere atención inmediata",
+                    type: "WARNING",
+                    source: "CTI_FEED",
+                    severity: "high",
+                    status: "processing",
+                    cveIds: ["CVE-2024-9999"],
+                  },
+                ];
+
+                for (const alert of sampleAlerts) {
+                  await alertsService.createAlert(alert);
+                }
+                
+                toast.success("Alertas de prueba creadas");
+                loadData();
+              } catch (error) {
+                toast.error(error.message || "Error al crear alertas de prueba");
+              }
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
           >
-            <option value="">Todos los estados</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="archived">Archived</option>
-          </select>
+            + Crear alertas de prueba
+          </button>
         </div>
 
         {loading ? (

@@ -25,3 +25,16 @@ export async function getAlerts(req, res, next) {
     next(error);
   }
 }
+
+export async function getAlertsStats(req, res, next) {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const stats = await alertsService.getAlertsStats(userId);
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+}

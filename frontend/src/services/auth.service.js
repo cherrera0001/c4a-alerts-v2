@@ -3,28 +3,34 @@ import { api } from "./api.js";
 export const authService = {
   login: async (email, password) => {
     const response = await api.post("/api/auth/login", { email, password });
-    if (response.token) {
-      localStorage.setItem("c4a_token", response.token);
-      if (response.user) {
-        localStorage.setItem("c4a_user", JSON.stringify(response.user));
+    // El backend devuelve { success: true, data: { user, token } }
+    const data = response.data || response;
+    if (data.token) {
+      localStorage.setItem("c4a_token", data.token);
+      if (data.user) {
+        localStorage.setItem("c4a_user", JSON.stringify(data.user));
       }
     }
-    return response;
+    return data;
   },
 
   register: async (email, password, name) => {
     const response = await api.post("/api/auth/register", { email, password, name });
-    if (response.token) {
-      localStorage.setItem("c4a_token", response.token);
-      if (response.user) {
-        localStorage.setItem("c4a_user", JSON.stringify(response.user));
+    // El backend devuelve { success: true, data: { user, token } }
+    const data = response.data || response;
+    if (data.token) {
+      localStorage.setItem("c4a_token", data.token);
+      if (data.user) {
+        localStorage.setItem("c4a_user", JSON.stringify(data.user));
       }
     }
-    return response;
+    return data;
   },
 
   getProfile: async () => {
-    return api.get("/api/auth/me");
+    const response = await api.get("/api/auth/me");
+    // El backend devuelve { success: true, data: { ...user } }
+    return response.data || response;
   },
 
   updateProfile: async (data) => {

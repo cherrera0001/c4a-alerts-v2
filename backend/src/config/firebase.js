@@ -105,25 +105,149 @@ function createMockDb() {
             return { id };
           },
         }),
-        where: () => ({
-          where: function() { return this; },
-          orderBy: () => ({
-            limit: () => ({
-              startAfter: () => ({
-                get: async () => ({ docs: [], empty: true }),
+        where: (field, operator, value) => {
+          const query = {
+            field,
+            operator,
+            value,
+          };
+          return {
+            where: function(f, o, v) { 
+              query.field = f;
+              query.operator = o;
+              query.value = v;
+              return this;
+            },
+            orderBy: () => ({
+              limit: () => ({
+                startAfter: () => ({
+                  get: async () => {
+                    const results = Array.from(collection.values()).filter(item => {
+                      const itemValue = item[query.field];
+                      if (query.operator === "==") {
+                        return itemValue === query.value || 
+                               (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                                itemValue.toLowerCase() === query.value.toLowerCase());
+                      }
+                      return false;
+                    });
+                    return {
+                      docs: results.map(data => ({
+                        id: data.id,
+                        data: () => data,
+                        exists: true,
+                      })),
+                      empty: results.length === 0,
+                    };
+                  },
+                }),
+                get: async () => {
+                  const results = Array.from(collection.values()).filter(item => {
+                    const itemValue = item[query.field];
+                    if (query.operator === "==") {
+                      return itemValue === query.value || 
+                             (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                              itemValue.toLowerCase() === query.value.toLowerCase());
+                    }
+                    return false;
+                  });
+                  return {
+                    docs: results.map(data => ({
+                      id: data.id,
+                      data: () => data,
+                      exists: true,
+                    })),
+                    empty: results.length === 0,
+                  };
+                },
               }),
-              get: async () => ({ docs: [], empty: true }),
+              get: async () => {
+                const results = Array.from(collection.values()).filter(item => {
+                  const itemValue = item[query.field];
+                  if (query.operator === "==") {
+                    return itemValue === query.value || 
+                           (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                            itemValue.toLowerCase() === query.value.toLowerCase());
+                  }
+                  return false;
+                });
+                return {
+                  docs: results.map(data => ({
+                    id: data.id,
+                    data: () => data,
+                    exists: true,
+                  })),
+                  empty: results.length === 0,
+                };
+              },
             }),
-            get: async () => ({ docs: [], empty: true }),
-          }),
-          limit: () => ({
-            startAfter: () => ({
-              get: async () => ({ docs: [], empty: true }),
+            limit: (max) => ({
+              startAfter: () => ({
+                get: async () => {
+                  const results = Array.from(collection.values())
+                    .filter(item => {
+                      const itemValue = item[query.field];
+                      if (query.operator === "==") {
+                        return itemValue === query.value || 
+                               (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                                itemValue.toLowerCase() === query.value.toLowerCase());
+                      }
+                      return false;
+                    })
+                    .slice(0, max);
+                  return {
+                    docs: results.map(data => ({
+                      id: data.id,
+                      data: () => data,
+                      exists: true,
+                    })),
+                    empty: results.length === 0,
+                  };
+                },
+              }),
+              get: async () => {
+                const results = Array.from(collection.values())
+                  .filter(item => {
+                    const itemValue = item[query.field];
+                    if (query.operator === "==") {
+                      return itemValue === query.value || 
+                             (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                              itemValue.toLowerCase() === query.value.toLowerCase());
+                    }
+                    return false;
+                  })
+                  .slice(0, max);
+                return {
+                  docs: results.map(data => ({
+                    id: data.id,
+                    data: () => data,
+                    exists: true,
+                  })),
+                  empty: results.length === 0,
+                };
+              },
             }),
-            get: async () => ({ docs: [], empty: true }),
-          }),
-          get: async () => ({ docs: [], empty: true }),
-        }),
+            get: async () => {
+              const results = Array.from(collection.values()).filter(item => {
+                const itemValue = item[query.field];
+                if (query.operator === "==") {
+                  return itemValue === query.value || 
+                         (typeof itemValue === 'string' && typeof query.value === 'string' && 
+                          itemValue.toLowerCase() === query.value.toLowerCase());
+                }
+                return false;
+              });
+              return {
+                docs: results.map(data => ({
+                  id: data.id,
+                  data: () => data,
+                  exists: true,
+                })),
+                empty: results.length === 0,
+              };
+            },
+          };
+        },
         orderBy: () => ({
           limit: () => ({
             startAfter: () => ({

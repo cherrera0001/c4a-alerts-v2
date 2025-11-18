@@ -42,6 +42,8 @@ export const createAlertSchema = z.object({
     .optional()
     .default(""),
   source: z.enum(["CTI_FEED", "INTERNAL_LOG", "MANUAL", "OTHER"]).default("MANUAL"),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
+  status: z.enum(["pending", "processing", "completed", "failed", "archived"]).optional(),
   cveIds: z
     .array(
       z.string().regex(cveIdRegex, { message: "Formato CVE inválido (ej: CVE-2024-1234)" })
@@ -103,6 +105,8 @@ export const getAlertsQuerySchema = z.object({
     .optional(),
   assetId: z.string().optional(),
   type: z.enum(["INFO", "WARNING", "CRITICAL"]).optional(),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]).optional(),
+  status: z.enum(["pending", "processing", "completed", "failed", "archived"]).optional(),
   orderBy: z
     .string()
     .default("createdAt")

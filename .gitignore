@@ -336,3 +336,9 @@ test-cert/
 
 # Project specific ignores
 # Add any project-specific files or directories here
+
+# Git bundles and archives
+*.bundle
+*.zip
+c4a-alerts-*.bundle
+c4a-alerts-*.zip

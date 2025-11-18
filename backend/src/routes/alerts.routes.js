@@ -25,4 +25,10 @@ router.post(
   alertsController.createAlert
 );
 
+router.get(
+  "/stats",
+  authRequired,
+  alertsController.getAlertsStats
+);
+
 export default router;

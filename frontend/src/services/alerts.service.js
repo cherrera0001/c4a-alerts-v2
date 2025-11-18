@@ -12,19 +12,25 @@ export const alertsService = {
 
     const queryString = queryParams.toString();
     const endpoint = `/api/alerts${queryString ? `?${queryString}` : ""}`;
-    return api.get(endpoint);
+    const response = await api.get(endpoint);
+    // El backend devuelve { success: true, data: { alerts, pagination } }
+    return response.data || response;
   },
 
   getAlertById: async (id) => {
-    return api.get(`/api/alerts/${id}`);
+    const response = await api.get(`/api/alerts/${id}`);
+    return response.data || response;
   },
 
   createAlert: async (data) => {
-    return api.post("/api/alerts", data);
+    const response = await api.post("/api/alerts", data);
+    // El backend devuelve { success: true, data: alert }
+    return response.data || response;
   },
 
   updateAlert: async (id, data) => {
-    return api.put(`/api/alerts/${id}`, data);
+    const response = await api.put(`/api/alerts/${id}`, data);
+    return response.data || response;
   },
 
   deleteAlert: async (id) => {
@@ -32,7 +38,9 @@ export const alertsService = {
   },
 
   getStats: async () => {
-    return api.get("/api/alerts/stats");
+    const response = await api.get("/api/alerts/stats");
+    // El backend devuelve { success: true, data: { total, bySeverity, byStatus } }
+    return response.data || response;
   },
 };
 
