@@ -23,7 +23,13 @@ class ApiClient {
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: "Error desconocido" }));
-        throw new Error(error.message || error.error || "Error en la petición");
+        const customError = new Error(error.message || error.error || "Error en la petición");
+        customError.response = {
+          status: response.status,
+          statusText: response.statusText,
+          data: error,
+        };
+        throw customError;
       }
 
       if (response.status === 204) {

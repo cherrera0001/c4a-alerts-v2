@@ -61,6 +61,11 @@ export const loginSchema = z.object({
       invalid_type_error: "Contraseña debe ser una cadena de texto",
     })
     .min(1, { message: "Contraseña es requerida" }),
+  twoFactorCode: z
+    .string()
+    .length(6, { message: "El código 2FA debe tener 6 dígitos" })
+    .regex(/^\d{6}$/, { message: "El código 2FA debe contener solo números" })
+    .optional(),
 }).strict();
 
 export const updateProfileSchema = z.object({

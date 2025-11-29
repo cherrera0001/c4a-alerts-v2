@@ -8,14 +8,23 @@ import {
   updateProfileSchema,
   changePasswordSchema,
 } from "../schemas/auth.schema.js";
+import { enable2FASchema } from "../schemas/twoFactor.schema.js";
 import * as authController from "../controllers/auth.controller.js";
+import * as twoFactorController from "../controllers/twoFactor.controller.js";
 
 const router = express.Router();
 
+// Rutas de autenticación básica
 router.post("/register", authLimiter, validateBody(registerSchema), authController.register);
 router.post("/login", authLimiter, validateBody(loginSchema), authController.login);
 router.get("/me", authRequired, authController.getProfile);
 router.patch("/profile", authRequired, validateBody(updateProfileSchema), authController.updateProfile);
 router.post("/change-password", authRequired, validateBody(changePasswordSchema), authController.changePassword);
+
+// Rutas de 2FA
+router.get("/2fa/status", authRequired, twoFactorController.get2FAStatus);
+router.post("/2fa/setup", authRequired, twoFactorController.setup2FA);
+router.post("/2fa/enable", authRequired, validateBody(enable2FASchema), twoFactorController.enable2FA);
+router.post("/2fa/disable", authRequired, twoFactorController.disable2FA);
 
 export default router;

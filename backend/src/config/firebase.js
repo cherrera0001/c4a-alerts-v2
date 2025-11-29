@@ -107,15 +107,11 @@ function createMockDb() {
         }),
         where: (field, operator, value) => {
           const query = {
-            field,
-            operator,
-            value,
+            conditions: [{ field, operator, value }],
           };
           return {
             where: function(f, o, v) { 
-              query.field = f;
-              query.operator = o;
-              query.value = v;
+              query.conditions.push({ field: f, operator: o, value: v });
               return this;
             },
             orderBy: () => ({
@@ -123,13 +119,26 @@ function createMockDb() {
                 startAfter: () => ({
                   get: async () => {
                     const results = Array.from(collection.values()).filter(item => {
-                      const itemValue = item[query.field];
-                      if (query.operator === "==") {
-                        return itemValue === query.value || 
-                               (typeof itemValue === 'string' && typeof query.value === 'string' && 
-                                itemValue.toLowerCase() === query.value.toLowerCase());
-                      }
-                      return false;
+                      return query.conditions.every(condition => {
+                        const itemValue = item[condition.field];
+                        if (condition.operator === "==") {
+                          if (condition.field === "createdAt" && typeof condition.value === "string") {
+                            const itemDate = new Date(item.createdAt || item.timestamp || 0);
+                            const compareDate = new Date(condition.value);
+                            return itemDate >= compareDate;
+                          }
+                          return itemValue === condition.value || 
+                                 (typeof itemValue === 'string' && typeof condition.value === 'string' && 
+                                  itemValue.toLowerCase() === condition.value.toLowerCase());
+                        }
+                        if (condition.operator === ">=") {
+                          if (typeof itemValue === "string" && typeof condition.value === "string") {
+                            return itemValue >= condition.value;
+                          }
+                          return itemValue >= condition.value;
+                        }
+                        return false;
+                      });
                     });
                     return {
                       docs: results.map(data => ({
@@ -143,13 +152,26 @@ function createMockDb() {
                 }),
                 get: async () => {
                   const results = Array.from(collection.values()).filter(item => {
-                    const itemValue = item[query.field];
-                    if (query.operator === "==") {
-                      return itemValue === query.value || 
-                             (typeof itemValue === 'string' && typeof query.value === 'string' && 
-                              itemValue.toLowerCase() === query.value.toLowerCase());
-                    }
-                    return false;
+                    return query.conditions.every(condition => {
+                      const itemValue = item[condition.field];
+                      if (condition.operator === "==") {
+                        if (condition.field === "createdAt" && typeof condition.value === "string") {
+                          const itemDate = new Date(item.createdAt || item.timestamp || 0);
+                          const compareDate = new Date(condition.value);
+                          return itemDate >= compareDate;
+                        }
+                        return itemValue === condition.value || 
+                               (typeof itemValue === 'string' && typeof condition.value === 'string' && 
+                                itemValue.toLowerCase() === condition.value.toLowerCase());
+                      }
+                      if (condition.operator === ">=") {
+                        if (typeof itemValue === "string" && typeof condition.value === "string") {
+                          return itemValue >= condition.value;
+                        }
+                        return itemValue >= condition.value;
+                      }
+                      return false;
+                    });
                   });
                   return {
                     docs: results.map(data => ({
@@ -163,13 +185,26 @@ function createMockDb() {
               }),
               get: async () => {
                 const results = Array.from(collection.values()).filter(item => {
-                  const itemValue = item[query.field];
-                  if (query.operator === "==") {
-                    return itemValue === query.value || 
-                           (typeof itemValue === 'string' && typeof query.value === 'string' && 
-                            itemValue.toLowerCase() === query.value.toLowerCase());
-                  }
-                  return false;
+                  return query.conditions.every(condition => {
+                    const itemValue = item[condition.field];
+                    if (condition.operator === "==") {
+                      if (condition.field === "createdAt" && typeof condition.value === "string") {
+                        const itemDate = new Date(item.createdAt || item.timestamp || 0);
+                        const compareDate = new Date(condition.value);
+                        return itemDate >= compareDate;
+                      }
+                      return itemValue === condition.value || 
+                             (typeof itemValue === 'string' && typeof condition.value === 'string' && 
+                              itemValue.toLowerCase() === condition.value.toLowerCase());
+                    }
+                    if (condition.operator === ">=") {
+                      if (typeof itemValue === "string" && typeof condition.value === "string") {
+                        return itemValue >= condition.value;
+                      }
+                      return itemValue >= condition.value;
+                    }
+                    return false;
+                  });
                 });
                 return {
                   docs: results.map(data => ({
@@ -208,13 +243,26 @@ function createMockDb() {
               get: async () => {
                 const results = Array.from(collection.values())
                   .filter(item => {
-                    const itemValue = item[query.field];
-                    if (query.operator === "==") {
-                      return itemValue === query.value || 
-                             (typeof itemValue === 'string' && typeof query.value === 'string' && 
-                              itemValue.toLowerCase() === query.value.toLowerCase());
-                    }
-                    return false;
+                    return query.conditions.every(condition => {
+                      const itemValue = item[condition.field];
+                      if (condition.operator === "==") {
+                        if (condition.field === "createdAt" && typeof condition.value === "string") {
+                          const itemDate = new Date(item.createdAt || item.timestamp || 0);
+                          const compareDate = new Date(condition.value);
+                          return itemDate >= compareDate;
+                        }
+                        return itemValue === condition.value || 
+                               (typeof itemValue === 'string' && typeof condition.value === 'string' && 
+                                itemValue.toLowerCase() === condition.value.toLowerCase());
+                      }
+                      if (condition.operator === ">=") {
+                        if (typeof itemValue === "string" && typeof condition.value === "string") {
+                          return itemValue >= condition.value;
+                        }
+                        return itemValue >= condition.value;
+                      }
+                      return false;
+                    });
                   })
                   .slice(0, max);
                 return {
@@ -229,13 +277,26 @@ function createMockDb() {
             }),
             get: async () => {
               const results = Array.from(collection.values()).filter(item => {
-                const itemValue = item[query.field];
-                if (query.operator === "==") {
-                  return itemValue === query.value || 
-                         (typeof itemValue === 'string' && typeof query.value === 'string' && 
-                          itemValue.toLowerCase() === query.value.toLowerCase());
-                }
-                return false;
+                return query.conditions.every(condition => {
+                  const itemValue = item[condition.field];
+                  if (condition.operator === "==") {
+                    if (condition.field === "createdAt" && typeof condition.value === "string") {
+                      const itemDate = new Date(item.createdAt || item.timestamp || 0);
+                      const compareDate = new Date(condition.value);
+                      return itemDate >= compareDate;
+                    }
+                    return itemValue === condition.value || 
+                           (typeof itemValue === 'string' && typeof condition.value === 'string' && 
+                            itemValue.toLowerCase() === condition.value.toLowerCase());
+                  }
+                  if (condition.operator === ">=") {
+                    if (typeof itemValue === "string" && typeof condition.value === "string") {
+                      return itemValue >= condition.value;
+                    }
+                    return itemValue >= condition.value;
+                  }
+                  return false;
+                });
               });
               return {
                 docs: results.map(data => ({

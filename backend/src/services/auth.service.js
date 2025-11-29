@@ -108,18 +108,35 @@ export async function createUser(userData) {
   }
 }
 
-export async function loginUser(email, password) {
+export async function loginUser(email, password, ip = null, userAgent = null, twoFactorCode = null) {
   if (!email || !password) {
     const error = new Error("Email y contraseña son requeridos");
     error.statusCode = 400;
     throw error;
   }
 
+  // Importar servicios de telemetría y 2FA
+  const { logLoginAttempt, isIPBlocked, logSecurityEvent } = await import("./telemetry.service.js");
+  const { verify2FALogin } = await import("./twoFactor.service.js");
+
   try {
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Verificar bloqueo de IP
+    if (ip) {
+      const blocked = await isIPBlocked(ip);
+      if (blocked) {
+        await logLoginAttempt(normalizedEmail, ip, userAgent, false, "IP bloqueada por demasiados intentos fallidos");
+        const error = new Error("Tu IP ha sido temporalmente bloqueada por demasiados intentos fallidos. Intenta más tarde.");
+        error.statusCode = 429;
+        throw error;
+      }
+    }
+
     const user = await getUserByEmail(normalizedEmail);
 
     if (!user) {
+      await logLoginAttempt(normalizedEmail, ip, userAgent, false, "Usuario no encontrado");
       const error = new Error("Credenciales inválidas");
       error.statusCode = 401;
       throw error;
@@ -127,9 +144,42 @@ export async function loginUser(email, password) {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      await logLoginAttempt(normalizedEmail, ip, userAgent, false, "Contraseña incorrecta");
       const error = new Error("Credenciales inválidas");
       error.statusCode = 401;
       throw error;
+    }
+
+    // Verificar si 2FA está habilitado
+    const needs2FA = user.twoFactorEnabled === true && !!user.twoFactorSecret;
+    
+    if (needs2FA) {
+      // Si no se proporcionó código 2FA, indicar que se requiere
+      if (!twoFactorCode) {
+        await logSecurityEvent("LOGIN_2FA_REQUIRED", {
+          userId: user.id,
+          email: normalizedEmail,
+          ip,
+        });
+        const error = new Error("Se requiere código de autenticación de dos factores");
+        error.statusCode = 403;
+        error.code = "2FA_REQUIRED";
+        error.userId = user.id;
+        throw error;
+      }
+
+      // Verificar código 2FA
+      try {
+        await verify2FALogin(user.id, twoFactorCode);
+        await logSecurityEvent("LOGIN_2FA_VERIFIED", {
+          userId: user.id,
+          email: normalizedEmail,
+          ip,
+        });
+      } catch (verifyError) {
+        await logLoginAttempt(normalizedEmail, ip, userAgent, false, "Código 2FA inválido");
+        throw verifyError;
+      }
     }
 
     const token = signToken({
@@ -139,13 +189,20 @@ export async function loginUser(email, password) {
       organizationId: user.organizationId,
     });
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, twoFactorSecret: __, twoFactorBackupCodes: ___, ...userWithoutPassword } = user;
     
-    logger.info("Usuario autenticado", { userId: user.id, email: normalizedEmail });
+    await logLoginAttempt(normalizedEmail, ip, userAgent, true, "Login exitoso");
+
+    logger.info("Usuario autenticado", { 
+      userId: user.id, 
+      email: normalizedEmail,
+      twoFactorEnabled: needs2FA,
+    });
 
     return {
       user: userWithoutPassword,
       token,
+      twoFactorEnabled: needs2FA,
     };
   } catch (error) {
     logger.error("Error en login", { email, error: error.message });

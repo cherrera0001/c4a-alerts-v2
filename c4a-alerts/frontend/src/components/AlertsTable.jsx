@@ -78,3 +78,4 @@ export default function AlertsTable({ alerts, loading, error }) {
 
 
 
+

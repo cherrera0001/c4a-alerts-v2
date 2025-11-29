@@ -35,10 +35,12 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (email, password) => {
-    const response = await authService.login(email, password);
-    setUser(response.user || { email, id: response.userId });
-    setIsAuthenticated(true);
+  const login = async (email, password, twoFactorCode = null) => {
+    const response = await authService.login(email, password, twoFactorCode);
+    if (response && response.user) {
+      setUser(response.user);
+      setIsAuthenticated(true);
+    }
     return response;
   };
 

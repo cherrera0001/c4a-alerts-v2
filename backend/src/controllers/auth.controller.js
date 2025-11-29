@@ -35,15 +35,29 @@ export async function register(req, res, next) {
 
 export async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { email, password, twoFactorCode } = req.body;
     
-    const result = await authService.loginUser(email, password);
+    // Extraer IP y User-Agent para telemetría
+    const ip = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    
+    const result = await authService.loginUser(email, password, ip, userAgent, twoFactorCode);
 
     res.json({
       success: true,
       data: result,
     });
   } catch (error) {
+    // Manejar error de 2FA requerido
+    if (error.code === "2FA_REQUIRED") {
+      return res.status(403).json({
+        success: false,
+        error: error.message,
+        code: error.code,
+        userId: error.userId,
+        requires2FA: true,
+      });
+    }
     next(error);
   }
 }

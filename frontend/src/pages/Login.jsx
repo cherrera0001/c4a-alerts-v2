@@ -6,6 +6,9 @@ import { toast } from "react-hot-toast";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -15,12 +18,24 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      toast.success("Inicio de sesión exitoso");
-      navigate("/dashboard");
+      const result = await login(email, password, twoFactorCode);
+      
+      // Si el resultado indica que se requiere 2FA
+      if (result && result.requires2FA) {
+        setRequires2FA(true);
+        setUserId(result.userId);
+        toast.info("Ingresa tu código de autenticación de dos factores");
+      } else {
+        toast.success("Inicio de sesión exitoso");
+        navigate("/dashboard");
+      }
     } catch (error) {
-      // Mostrar mensaje más descriptivo según el tipo de error
-      if (error.name === "ConnectionError") {
+      // Verificar si es error de 2FA requerido
+      if (error.code === "2FA_REQUIRED" || (error.response && error.response.data && error.response.data.requires2FA)) {
+        setRequires2FA(true);
+        setUserId(error.response?.data?.userId || error.userId);
+        toast.info("Ingresa tu código de autenticación de dos factores");
+      } else if (error.name === "ConnectionError") {
         toast.error(
           error.message || "El servidor no está disponible. Por favor, verifica que el backend esté corriendo.",
           { duration: 5000 }
@@ -71,19 +86,59 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
+              required={!requires2FA}
               autoComplete="current-password"
-              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              disabled={requires2FA}
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="••••••••"
             />
           </div>
 
+          {requires2FA && (
+            <div>
+              <label htmlFor="twoFactorCode" className="block text-sm font-medium text-slate-300 mb-2">
+                Código de autenticación (2FA)
+              </label>
+              <input
+                id="twoFactorCode"
+                type="text"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                required
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center text-2xl tracking-widest"
+                placeholder="000000"
+              />
+              <p className="mt-2 text-xs text-slate-400">
+                Ingresa el código de 6 dígitos de tu aplicación de autenticación
+              </p>
+            </div>
+          )}
+
+          {requires2FA && (
+            <button
+              type="button"
+              onClick={() => {
+                setRequires2FA(false);
+                setTwoFactorCode("");
+                setUserId(null);
+              }}
+              className="w-full py-2 px-4 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition-colors text-sm"
+            >
+              Volver
+            </button>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (requires2FA && twoFactorCode.length !== 6)}
             className="w-full py-2 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+            {loading 
+              ? (requires2FA ? "Verificando código..." : "Iniciando sesión...") 
+              : (requires2FA ? "Verificar código" : "Iniciar sesión")}
           </button>
         </form>
       </div>
